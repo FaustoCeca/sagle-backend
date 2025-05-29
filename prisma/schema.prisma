@@ -1,0 +1,71 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Saga {
+  id          Int      @id @default(autoincrement())
+  title        String   @unique
+  isTheSagle Boolean  @default(false)
+  lastTimeBeingSagle DateTime?
+  imageUrl   String
+  categories  Category[]
+  games      Game[]
+  perspectives Perspective[]
+  artStyle  ArtStyles []
+  // yes, no, some
+  hasMultiplayer String
+  link       String
+  createdAt   DateTime @default(now())
+}
+
+model ArtStyles {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  sagas     Saga[]
+}
+
+model Perspective {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  sagas     Saga[]
+}
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  sagas     Saga[]
+}
+
+model Game {
+  id         Int      @id @default(autoincrement())
+  title       String   @unique
+  birthYear   Int
+  imageUrl   String
+  sagaId   Int?
+  saga      Saga?     @relation(fields: [sagaId], references: [id])
+  steamLink String?
+  votes Int
+  createdAt  DateTime @default(now())
+}
+
+model User {
+  id         Int      @id @default(autoincrement())
+  ipAddress   String   @unique
+  lastParticipation DateTime? 
+  hasParticipatedToday Boolean  @default(false)
+  hasVotedToday Boolean  @default(false)
+  isAdmin   Boolean  @default(false)
+  streak     Int      @default(0)
+}
