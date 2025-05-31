@@ -19,21 +19,25 @@ export class SagasService {
                 link: saga.link,
                 // TODO: revisar porque tengo que transformar a number, deberian venir como number en teoria?
                 categories: {
-
                     connect: saga.categories.map(categoryId => ({ id: Number(categoryId) }))
                 },
                 perspectives: {
                     connect: saga.perspectives.map(perspectiveId => ({ id: Number(perspectiveId) }))
                 },
-                artStyle: {
+                artStyles: {
                     connect: saga.artStyles.map(artStyleId => ({ id: Number(artStyleId) }))
                 },
+            },
+            include: {
+                categories: true,
+                perspectives: true,
+                artStyles: true,
+                games: true
             }
         })
 
         console.log("Created saga:", createdSaga);
 
-        // @ts-expect-error TODO: revisar porque no me reconoce el tipo de retorno
         return createdSaga;
     }
 
@@ -43,43 +47,52 @@ export class SagasService {
             include: {
                 categories: true,
                 perspectives: true,
-                artStyle: true
+                artStyles: true,
+                games: true
             },
             orderBy: {
                 title: 'asc'
             }
         })
 
-        // @ts-expect-error TODO: revisar porque no me reconoce el tipo de retorno
         return sagas;
     }
  
     async createGame(game: GameDto): Promise<GameDB> {
-        console.log("Creating game:", game);
 
         const createdGame = await this.prisma.game.create({
             data: {
                 title: game.title,
-                birthYear: game.birthYear,
+                birthYear: Number(game.birthYear), // Asegurarse de que el año es un número
                 imageUrl: game.imageUrl,
                 votes: 0,
-                sagaId: 0,
+                saga: {
+                    connect: { id: Number(game.sagaId) } // Asegurarse de que el sagaId es un número
+                },
                 steamLink: game.steamLink,
                 createdAt: new Date(),
+            },
+            include: {
+                saga: true
             }
         })
 
+        console.log("Created game:", createdGame);
+
+        // @ts-expect-error TODO: revisar porque no me reconoce el tipo de retorno
         return createdGame;
     }
     
     async createCategory(category: CategoryDto): Promise<CategoryDB> {
-        const createdCategories = await this.prisma.category.create({
+        const createdCategory = await this.prisma.category.create({
             data: {
                 name: category.name
             }
         })
 
-        return createdCategories;
+        console.log("Created category:", createdCategory);
+
+        return createdCategory;
     }
 
     async getCategories(): Promise<CategoryDB[]> {
@@ -98,6 +111,8 @@ export class SagasService {
                 name: perspective.name
             }
         })
+
+        console.log("Created perspective:", createdPerspective);
 
         return createdPerspective;
     }
@@ -119,6 +134,8 @@ export class SagasService {
             }
         })
 
+        console.log("Created art style:", createdArtStyle);
+
         return createdArtStyle;
     }
 
@@ -130,5 +147,16 @@ export class SagasService {
         })
 
         return artStyles;
+    }
+
+    async addGameToSaga(sagaId: number, gameId: number): Promise<void> {
+        await this.prisma.saga.update({
+            where: {id : sagaId},
+            data: {
+                games: {
+                    connect: { id: gameId }
+                }
+            }
+        })
     }
 }

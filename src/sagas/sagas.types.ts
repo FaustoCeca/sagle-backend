@@ -3,6 +3,7 @@ export interface SagaDB {
     title: string;
     isTheSagle: boolean;
     lastTimeBeingSagle: Date | null;
+    wasSagleYesterday: boolean;
     imageUrl: string;
     games: GameDB[] | [];
     categories: CategoryDB[];
@@ -24,7 +25,7 @@ export interface GameDB {
     title: string;
     birthYear: number;
     imageUrl: string;
-    sagaId?: number | null;
+    // sagaId?: number | null;
     saga?: SagaDB | null;
     steamLink: string | null;
     votes: number;

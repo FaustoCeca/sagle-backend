@@ -21,7 +21,7 @@ export class SagasController {
             files: 1
         },
         fileFilter: (req, file, callback) => {
-            if (!file.mimetype.match(/\/(jpg|jpeg|png)$/)) {
+            if (!file.mimetype.match(/\/(jpg|jpeg|png|avif)$/)) {
                 return callback(new Error('Only image files are allowed!'), false);
             }
             callback(null, true);
@@ -40,7 +40,7 @@ export class SagasController {
         console.log('Saga data received:', sagaDto);
         console.log('File received:', file);
 
-        const fileUrl = await this.uploadService.uploadFile(file, sagaDto.title);
+        const fileUrl = await this.uploadService.uploadFile(file, "saga");
 
         const sagaWithFile: SagaDto = {
             ...sagaDto,
@@ -59,7 +59,7 @@ export class SagasController {
             files: 1
         },
         fileFilter: (req, file, callback) => {
-            if (!file.mimetype.match(/\/(jpg|jpeg|png)$/)) {
+            if (!file.mimetype.match(/\/(jpg|jpeg|png|avif)$/)) {
                 return callback(new Error('Only image files are allowed!'), false);
             }
             callback(null, true);
@@ -75,22 +75,24 @@ export class SagasController {
         }
         const gameDto = JSON.parse(body.gameData) as GameDto;
 
-        console.log('Game data received:', gameDto);
-        console.log('File received:', file);
 
-        const fileUrl = await this.uploadService.uploadFile(file, gameDto.title);
+        const fileUrl = await this.uploadService.uploadFile(file, "game");
 
         const gameWithFile: GameDto = {
             title: gameDto.title,
             birthYear: gameDto.birthYear,
             imageUrl: fileUrl,
+            sagaId: gameDto.sagaId,
             votes: 0,
             steamLink: gameDto.steamLink,
         };
 
-        console.log('Game with file:', gameWithFile);
+        
+        const createdGame = await this.sagasService.createGame(gameWithFile);
 
-        return this.sagasService.createGame(gameWithFile);
+        await this.sagasService.addGameToSaga(Number(gameWithFile.sagaId), Number(createdGame.id));
+        
+        return createdGame;
     }
 
     @Post('category')

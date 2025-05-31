@@ -23,8 +23,8 @@ export class UploadService {
     });
   }
 
-  async uploadFile(file: Express.Multer.File, name: string): Promise<string> {
-    const fileName = `${Date.now()}-${file.originalname}`;
+  async uploadFile(file: Express.Multer.File, type: "saga" | "game"): Promise<string> {
+    const fileName = `${type}/${Date.now()}-${file.originalname.replace(/\s+/g, '-')}`;
     
     const command = new PutObjectCommand({
       Bucket: this.bucket,
@@ -36,7 +36,7 @@ export class UploadService {
 
     await this.s3Client.send(command);
 
-    return `${this.cdnEndpoint}/${fileName}-${name}`;
+    return `${this.cdnEndpoint}/${fileName}`;
   }
 
   async generatePresignedUrl(fileName: string, contentType: string): Promise<string> {

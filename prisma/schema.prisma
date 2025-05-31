@@ -19,11 +19,12 @@ model Saga {
   title        String   @unique
   isTheSagle Boolean  @default(false)
   lastTimeBeingSagle DateTime?
+  wasSagleYesterday Boolean  @default(false)
   imageUrl   String
   categories  Category[]
   games      Game[]
   perspectives Perspective[]
-  artStyle  ArtStyles []
+  artStyles  ArtStyles []
   // yes, no, some
   hasMultiplayer String
   link       String
@@ -53,8 +54,8 @@ model Game {
   title       String   @unique
   birthYear   Int
   imageUrl   String
-  sagaId   Int?
-  saga      Saga?     @relation(fields: [sagaId], references: [id])
+  sagaId   Int
+  saga      Saga     @relation(fields: [sagaId], references: [id])
   steamLink String?
   votes Int
   createdAt  DateTime @default(now())

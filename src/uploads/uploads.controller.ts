@@ -15,7 +15,7 @@ export class UploadController {
     }
 
     try {
-      const fileUrl = await this.uploadService.uploadFile(file, file.originalname);
+      const fileUrl = await this.uploadService.uploadFile(file, 'game');
       return { url: fileUrl };
     } catch (error) {
       throw new BadRequestException('Error uploading file');

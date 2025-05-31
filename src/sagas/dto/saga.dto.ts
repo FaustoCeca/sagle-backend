@@ -16,6 +16,8 @@ export class GameDto {
     title: string;
     birthYear: number;
     imageUrl: string;
+    sagaId: number;
+    // Dejo el campo votos para hacer pruebas, todos los juegos empiezan con 0 votos
     votes: number;
     steamLink?: string;
 }
