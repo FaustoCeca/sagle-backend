@@ -16,4 +16,26 @@ export class SagleScheduler {
             console.error('Error selecting daily Sagle:', error);
         }
     }
+
+    @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+    async handleDailyResetParticipation() {
+        try {
+            console.log('Resetting participation for all users...');
+            await this.sagleService.resetUsersParticipation();
+            console.log('Participation reset successfully');
+        } catch (error) {
+            console.error('Error resetting participation:', error);
+        }
+    }
+
+    @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+    async handleResetGamesVotes() {
+        try {
+            console.log('Resetting votes for all games...');
+            await this.sagleService.resetGamesVotes();
+            console.log('Votes reset successfully');
+        } catch (error) {
+            console.error('Error resetting game votes:', error);
+        }
+    }
 }

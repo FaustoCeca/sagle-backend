@@ -21,7 +21,7 @@ export class SagasController {
             files: 1
         },
         fileFilter: (req, file, callback) => {
-            if (!file.mimetype.match(/\/(jpg|jpeg|png|avif)$/)) {
+            if (!file.mimetype.match(/\/(jpg|jpeg|png|avif|webp|jfif)$/)) {
                 return callback(new Error('Only image files are allowed!'), false);
             }
             callback(null, true);
@@ -59,7 +59,7 @@ export class SagasController {
             files: 1
         },
         fileFilter: (req, file, callback) => {
-            if (!file.mimetype.match(/\/(jpg|jpeg|png|avif)$/)) {
+            if (!file.mimetype.match(/\/(jpg|jpeg|png|avif|webp|jfif)$/)) {
                 return callback(new Error('Only image files are allowed!'), false);
             }
             callback(null, true);

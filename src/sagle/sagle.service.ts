@@ -1,11 +1,25 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { SagaDB } from "src/sagas/sagas.types";
+import { UsersService } from "src/users/users.service";
 
 @Injectable()
 export class SagleService {
     constructor(private readonly prisma: PrismaService, 
+        private readonly usersService: UsersService
     ) {}
+
+    async resetUsersParticipation(): Promise<void> {
+        await this.prisma.user.updateMany({
+            data: {
+                hasParticipatedToday: false,
+                hasVotedToday: false,
+            },
+            where: {
+                hasParticipatedToday: true
+            }
+        })
+    }
 
     private async resetCurrentSagle(): Promise<void> {
         await this.prisma.saga.updateMany({
@@ -17,6 +31,19 @@ export class SagleService {
                 wasSagleYesterday: true,
             }
         })
+    }
+
+    async resetGamesVotes(): Promise<void> {
+        await this.prisma.game.updateMany({
+            data: {
+                votes: 0
+            },
+            where: {
+                votes: {
+                    gt: 0
+                }
+            }
+        });
     }
 
     async chooseSagle(): Promise<SagaDB> {
@@ -73,5 +100,62 @@ export class SagleService {
                 games: true,
             }
         });
+    }
+
+    async winSagle(ipAddress: string): Promise<void> {
+        const foundedUser = await this.usersService.findUserByIp(ipAddress);
+
+        if (!foundedUser) {
+            throw new Error("User not found");
+        }
+
+        await this.prisma.user.update({
+            where: {
+                id: foundedUser.id
+            },
+            data: {
+                hasParticipatedToday: true,
+                lastParticipation: new Date(),
+                streak: {
+                    increment: 1
+                }
+            }
+        });
+    }
+
+    async voteGame(ipAddress: string, gameId: number): Promise<void> {
+        const [foundedUser, votedGame] = await Promise.all([
+            this.usersService.findUserByIp(ipAddress),
+            this.prisma.game.findUnique({
+                where: {
+                    id: gameId
+                }
+            })
+        ]);
+
+        if (!foundedUser) {
+            throw new Error("User not found");
+        }
+
+        await Promise.all([
+            this.prisma.user.update({
+                where: {
+                    id: foundedUser.id
+                },
+                data: {
+                    hasVotedToday: true,
+                }
+            }),
+            this.prisma.game.update({
+                where: {
+                    id: votedGame?.id
+                },
+                data: {
+                    votes: {
+                        increment: 1
+                    }
+                }
+            })
+        ])
     }
 }
