@@ -59,7 +59,6 @@ export class SagasService {
     }
  
     async createGame(game: GameDto): Promise<GameDB> {
-
         const createdGame = await this.prisma.game.create({
             data: {
                 title: game.title,

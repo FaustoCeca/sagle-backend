@@ -38,4 +38,16 @@ export class SagleScheduler {
             console.error('Error resetting game votes:', error);
         }
     }
+
+    // Quiero que se dispare cada dos dias a la medianoche
+    @Cron('0 0 */2 * *')
+    async handleYesterdaySagleReset() {
+        try {
+            console.log('Resetting yesterday\'s Sagle...');
+            await this.sagleService.resetYesterdaySagle();
+            console.log('Yesterday\'s Sagle reset successfully');
+        } catch (error) {
+            console.error('Error resetting yesterday\'s Sagle:', error);
+        }
+    }
 }

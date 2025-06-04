@@ -46,6 +46,17 @@ export class SagleService {
         });
     }
 
+    async resetYesterdaySagle(): Promise<void> {
+        await this.prisma.saga.updateMany({
+            where: {
+                wasSagleYesterday: true
+            },
+            data: {
+                wasSagleYesterday: false,
+            }
+        });
+    }
+
     async chooseSagle(): Promise<SagaDB> {
         await this.resetCurrentSagle();
 
@@ -61,6 +72,8 @@ export class SagleService {
                 ]
             }
         });
+
+        console
 
         if (elegibleSagas.length === 0) {
             throw new Error("No elegible sagas found");
@@ -157,5 +170,52 @@ export class SagleService {
                 }
             })
         ])
+    }
+
+    async attemptGame(ipAddress: string, sagaId: number): Promise<{ haveFoundSagle: boolean }> {
+        const foundedUser = await this.usersService.findUserByIp(ipAddress);
+        const currentSagle = await this.getCurrentSagle();
+
+        if (!foundedUser) {
+            throw new Error("User not found");
+        }
+
+        await this.prisma.user.update({
+            where: {
+                id: foundedUser.id
+            },
+            data: {
+                idsAttemptedToday: {
+                    push: sagaId
+                }
+            }
+        });
+
+        const haveFoundSagle = currentSagle?.id === sagaId;
+
+        if (haveFoundSagle) {
+            await this.winSagle(ipAddress);
+        }
+
+        return { haveFoundSagle };
+    }
+
+    async getAttempts(ipAddress: string): Promise<number[]> {
+        const foundedUser = await this.usersService.findUserByIp(ipAddress);
+
+        if (!foundedUser) {
+            throw new Error("User not found");
+        }
+
+        if (!foundedUser.idsAttemptedToday) {
+            return [];
+        }
+
+        // Quiero que no se repitan los IDs
+        const uniqueIds = foundedUser.idsAttemptedToday.filter((value, index, self) =>
+            self.indexOf(value) === index
+        );
+
+        return uniqueIds.map(id => Number(id));
     }
 }

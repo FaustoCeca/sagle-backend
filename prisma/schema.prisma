@@ -66,6 +66,7 @@ model User {
   ipAddress   String   @unique
   lastParticipation DateTime? 
   hasParticipatedToday Boolean  @default(false)
+  idsAttemptedToday Int[] @default([])
   hasVotedToday Boolean  @default(false)
   isAdmin   Boolean  @default(false)
   streak     Int      @default(0)
