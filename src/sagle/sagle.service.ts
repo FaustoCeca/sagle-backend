@@ -1,22 +1,43 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { SagaDB } from "src/sagas/sagas.types";
 import { UsersService } from "src/users/users.service";
+import { SagleGateway } from "./sagle.gateway";
+import { CACHE_MANAGER } from "@nestjs/cache-manager";
+import { Cache } from "cache-manager";
+import ProfileExecution from "src/decorators/ProfileExecution";
+
 
 @Injectable()
 export class SagleService {
-    constructor(private readonly prisma: PrismaService, 
-        private readonly usersService: UsersService
-    ) {}
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly usersService: UsersService,
+        private readonly sagleGateway: SagleGateway,
+        @Inject(CACHE_MANAGER) private cacheManager: Cache
+    ) { }
 
     async resetUsersParticipation(): Promise<void> {
         await this.prisma.user.updateMany({
+            where: {
+                hasParticipatedToday: true
+            },
             data: {
                 hasParticipatedToday: false,
                 hasVotedToday: false,
-            },
+                idsAttemptedToday: [],
+            }
+        })
+    }
+
+    async resetInactiveUsersStreak(): Promise<void> {
+        await this.prisma.user.updateMany({
             where: {
-                hasParticipatedToday: true
+                hasParticipatedToday: false,
+            },
+            data: {
+                streak: 0,
+                idsAttemptedToday: [],
             }
         })
     }
@@ -63,7 +84,7 @@ export class SagleService {
         const elegibleSagas = await this.prisma.saga.findMany({
             where: {
                 OR: [
-                    {lastTimeBeingSagle: null},
+                    { lastTimeBeingSagle: null },
                     {
                         lastTimeBeingSagle: {
                             lt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5) // 5 days ago
@@ -73,36 +94,45 @@ export class SagleService {
             }
         });
 
-        console
-
         if (elegibleSagas.length === 0) {
             throw new Error("No elegible sagas found");
         }
 
-        const randomeIndex = Math.floor(Math.random() * elegibleSagas.length);
-        const selectedSagle = elegibleSagas[randomeIndex];
+        const randomIndex = Math.floor(Math.random() * elegibleSagas.length);
+        const selectedSagle = elegibleSagas[randomIndex];
 
-       const updatedSagle = await this.prisma.saga.update({
-         where: {
-            id: selectedSagle.id
-         },
-         data: {
-            isTheSagle: true,
-            lastTimeBeingSagle: new Date(),
-         },
-         include: {
-            categories: true,
-            perspectives: true,
-            artStyles: true,
-            games: true,
-         }
-       });
+        const updatedSagle = await this.prisma.saga.update({
+            where: {
+                id: selectedSagle.id
+            },
+            data: {
+                isTheSagle: true,
+                lastTimeBeingSagle: new Date(),
+            },
+            include: {
+                categories: true,
+                perspectives: true,
+                artStyles: true,
+                games: true,
+            }
+        });
 
         return updatedSagle;
     }
 
+    @ProfileExecution
     async getCurrentSagle(): Promise<SagaDB | null> {
-        return this.prisma.saga.findFirst({
+        const cacheKey = 'currentSagle';
+        const cachedSagle = await this.cacheManager.get<SagaDB>(cacheKey);
+
+        console.log("Cache hit for currentSagle:", !!cachedSagle);
+
+        if (cachedSagle) {
+            console.log("Returning cached Sagle");
+            return cachedSagle;
+        }
+
+        const sagle = await this.prisma.saga.findFirst({
             where: {
                 isTheSagle: true
             },
@@ -113,91 +143,112 @@ export class SagleService {
                 games: true,
             }
         });
-    }
 
-    async winSagle(ipAddress: string): Promise<void> {
-        const foundedUser = await this.usersService.findUserByIp(ipAddress);
-
-        if (!foundedUser) {
-            throw new Error("User not found");
+        if (sagle) {
+            await this.cacheManager.set(cacheKey, sagle, 60 * 30); // Cache for 5 minutes
         }
 
-        await this.prisma.user.update({
+        return sagle;
+    }
+
+    private async getCurrentSagleInTransaction(tx: any): Promise<SagaDB | null> {
+        return tx.saga.findFirst({
             where: {
-                id: foundedUser.id
-            },
-            data: {
-                hasParticipatedToday: true,
-                lastParticipation: new Date(),
-                streak: {
-                    increment: 1
-                }
+                isTheSagle: true
+            }, 
+            include: {
+                categories: true,
+                perspectives: true,
+                artStyles: true,
+                games: true,
             }
+        })
+    }
+
+    @ProfileExecution
+    async voteGame(ipAddress: string, gameId: number) {
+        await this.cacheManager.del('currentSagle');
+        return this.prisma.$transaction(async (tx) => {
+            // Find user and game in the same transaction
+            const [foundedUser, votedGame] = await Promise.all([
+                this.usersService.findUserByIpInTransaction(tx, ipAddress),
+                tx.game.findUnique({ where: { id: gameId } })
+            ]);
+
+            if (!foundedUser) throw new Error("User not found");
+            if (!votedGame) throw new Error("Game not found");
+
+            // Update user and game in the same transaction
+            const [updatedUser, updatedGame] = await Promise.all([
+                tx.user.update({
+                    where: { id: foundedUser.id },
+                    data: { hasVotedToday: true }
+                }),
+                tx.game.update({
+                    where: { id: votedGame.id },
+                    data: { votes: { increment: 1 } }
+                })
+            ]);
+
+            // Get the updated Sagle with fresh game data
+            const currentSagle = await this.getCurrentSagleInTransaction(tx);
+            if (!currentSagle) throw new Error("No current Sagle found");
+
+            // Emit socket update asynchronously (don't await)
+            this.emitVoteUpdateAsync(gameId, updatedUser.id, currentSagle);
+
+            return { user: updatedUser, saga: currentSagle };
         });
     }
 
-    async voteGame(ipAddress: string, gameId: number): Promise<void> {
-        const [foundedUser, votedGame] = await Promise.all([
-            this.usersService.findUserByIp(ipAddress),
-            this.prisma.game.findUnique({
-                where: {
-                    id: gameId
+    private emitVoteUpdateAsync(gameId: number, userId: number, sagle: SagaDB) {
+        setImmediate(() => {
+            this.sagleGateway.emiteVoteUpdate(gameId, userId, sagle);
+        });
+    }
+
+    @ProfileExecution
+    async attemptSaga(ipAddress: string, sagaId: number): Promise<{ haveFoundSagle: boolean }> {
+        return this.prisma.$transaction(async (tx) => {
+            const foundedUser = await this.usersService.findUserByIpInTransaction(tx, ipAddress);
+            if (!foundedUser) {
+                throw new Error("User not found");
+            }
+
+            const currentSagle = await this.getCurrentSagleInTransaction(tx);
+
+            if (!currentSagle) {
+                throw new Error("No current Sagle found");
+            }
+
+            await tx.user.update({
+                where: { id: foundedUser.id },
+                data: {
+                    idsAttemptedToday: {
+                        push: sagaId
+                    },
                 }
             })
-        ]);
 
-        if (!foundedUser) {
-            throw new Error("User not found");
-        }
+            const haveFoundSagle = currentSagle.id === sagaId;
 
-        await Promise.all([
-            this.prisma.user.update({
-                where: {
-                    id: foundedUser.id
-                },
-                data: {
-                    hasVotedToday: true,
-                }
-            }),
-            this.prisma.game.update({
-                where: {
-                    id: votedGame?.id
-                },
-                data: {
-                    votes: {
-                        increment: 1
+            if (haveFoundSagle) {
+                await tx.user.update({
+                    where: {
+                        id: foundedUser.id
+                    },
+                    data: {
+                        hasParticipatedToday: true,
+                        lastParticipation: new Date(),
+                        streak: {
+                            increment: 1
+                        }
                     }
-                }
-            })
-        ])
-    }
-
-    async attemptGame(ipAddress: string, sagaId: number): Promise<{ haveFoundSagle: boolean }> {
-        const foundedUser = await this.usersService.findUserByIp(ipAddress);
-        const currentSagle = await this.getCurrentSagle();
-
-        if (!foundedUser) {
-            throw new Error("User not found");
-        }
-
-        await this.prisma.user.update({
-            where: {
-                id: foundedUser.id
-            },
-            data: {
-                idsAttemptedToday: {
-                    push: sagaId
-                }
+                });
             }
-        });
 
-        const haveFoundSagle = currentSagle?.id === sagaId;
-
-        if (haveFoundSagle) {
-            await this.winSagle(ipAddress);
-        }
-
-        return { haveFoundSagle };
+            return { haveFoundSagle };
+        })
     }
 
     async getAttempts(ipAddress: string): Promise<number[]> {

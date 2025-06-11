@@ -29,6 +29,14 @@ model Saga {
   hasMultiplayer String
   link       String
   createdAt   DateTime @default(now())
+
+  @@index([title], name: "idx_saga_title")
+  @@index([isTheSagle], name: "idx_saga_is_the_sagle")
+  @@index([lastTimeBeingSagle], name: "idx_saga_last_time_being_sagle")
+  @@index([wasSagleYesterday], name: "idx_saga_was_sagle_yesterday")
+  @@index([hasMultiplayer], name: "idx_saga_has_multiplayer")
+  @@index([link], name: "idx_saga_link")
+  @@index([createdAt], name: "idx_saga_created_at")
 }
 
 model ArtStyles {
@@ -59,6 +67,14 @@ model Game {
   steamLink String?
   votes Int
   createdAt  DateTime @default(now())
+
+  @@index([title], name: "idx_game_title")
+  @@index([birthYear], name: "idx_game_birth_year")
+  @@index([imageUrl], name: "idx_game_image_url")
+  @@index([sagaId], name: "idx_game_saga_id")
+  @@index([steamLink], name: "idx_game_steam_link")
+  @@index([votes], name: "idx_game_votes")
+  @@index([createdAt], name: "idx_game_created_at")
 }
 
 model User {
@@ -70,4 +86,11 @@ model User {
   hasVotedToday Boolean  @default(false)
   isAdmin   Boolean  @default(false)
   streak     Int      @default(0)
+
+  @@index([ipAddress], name: "idx_user_ip_address")
+  @@index([lastParticipation], name: "idx_user_last_participation")
+  @@index([hasParticipatedToday], name: "idx_user_has_participated_today")
+  @@index([hasVotedToday], name: "idx_user_has_voted_today")
+  @@index([streak], name: "idx_user_streak")
+  @@index([idsAttemptedToday], name: "idx_user_ids_attempted_today")
 }

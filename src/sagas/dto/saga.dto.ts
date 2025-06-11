@@ -4,7 +4,7 @@ export class SagaDto {
     categories: number[];
     perspectives: number[];
     artStyles: number[];
-    hasMultiplayer: string;
+    hasMultiplayer: 'Yes' | 'No' | 'Some';
     link: string;
 }
 

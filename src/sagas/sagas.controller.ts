@@ -3,6 +3,7 @@ import { ArtStylesDto, CategoryDto, GameDto, PerspectiveDto, SagaDto } from "./d
 import { SagasService } from "./sagas.service";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { UploadService } from "src/uploads/uploads.service";
+import UseUploadFileInterceptor from "src/decorators/UseFileInterceptor";
 
 
 @Controller('sagas')
@@ -15,18 +16,7 @@ export class SagasController {
     }
 
     @Post('saga')
-    @UseInterceptors(FileInterceptor('file', {
-        limits: {
-            fileSize: 100 * 1024 * 1024, // 100 MB
-            files: 1
-        },
-        fileFilter: (req, file, callback) => {
-            if (!file.mimetype.match(/\/(jpg|jpeg|png|avif|webp|jfif)$/)) {
-                return callback(new Error('Only image files are allowed!'), false);
-            }
-            callback(null, true);
-        }
-    }))
+    @UseUploadFileInterceptor('file')
     async createSaga(
         // TODO
         @Body() body: any,
@@ -53,18 +43,7 @@ export class SagasController {
     }
 
     @Post('game')
-    @UseInterceptors(FileInterceptor('file', {
-        limits: {
-            fileSize: 100 * 1024 * 1024, // 100 MB
-            files: 1
-        },
-        fileFilter: (req, file, callback) => {
-            if (!file.mimetype.match(/\/(jpg|jpeg|png|avif|webp|jfif)$/)) {
-                return callback(new Error('Only image files are allowed!'), false);
-            }
-            callback(null, true);
-        }
-    }))
+    @UseUploadFileInterceptor('file')
     async createGame(
         // TODO
         @Body() body: any,
@@ -99,7 +78,6 @@ export class SagasController {
     async createCategory(
         @Body() categorydto: CategoryDto
     ) {
-        console.log('Category data received:', categorydto);
         return this.sagasService.createCategory(categorydto);
     }
 

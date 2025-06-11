@@ -16,22 +16,15 @@ export class SagleController {
         return this.sagleService.getCurrentSagle();
     }
 
-    @Get('win-sagle')
-    async winSagle(@Ip() ipAddress: string) {
-        console.log('You won the Sagle!');
-        await this.sagleService.winSagle(ipAddress);
-        return { message: 'You won the Sagle!', success: true };
-    }
-
     @Put('vote')
     async voteGame(@Ip() IpAddress: string, @Body() body: { gameId: number }) {
-        await this.sagleService.voteGame(IpAddress, body.gameId);
-        return { message: 'Vote registered successfully', success: true };
+        const result = await this.sagleService.voteGame(IpAddress, body.gameId);
+        return { message: 'Vote registered successfully', success: true, user: result.user, saga: result.saga };
     }
 
     @Put('attempt')
-    async attemptGame(@Ip() IpAddress: string, @Body() body: { sagaId: number }) {
-        const result = await this.sagleService.attemptGame(IpAddress, body.sagaId);
+    async attemptSaga(@Ip() IpAddress: string, @Body() body: { sagaId: number }) {
+        const result = await this.sagleService.attemptSaga(IpAddress, body.sagaId);
         return { 
             message: result.haveFoundSagle ? 'You found the Sagle!' : 'Attempt registered successfully',
             success: true,

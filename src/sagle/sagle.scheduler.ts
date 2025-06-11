@@ -50,4 +50,15 @@ export class SagleScheduler {
             console.error('Error resetting yesterday\'s Sagle:', error);
         }
     }
+
+    @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+    async resetInactiveUsersStreak() {
+        try {
+            console.log('Resetting streak for inactive users...');
+            await this.sagleService.resetInactiveUsersStreak();
+            console.log('Inactive users streak reset successfully');
+        } catch (error) {
+            console.error('Error resetting inactive users streak:', error);
+        }
+    }
 }

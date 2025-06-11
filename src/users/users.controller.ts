@@ -11,7 +11,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) { }
 
   @Post('register')
-  async register(@Body() request: Request, @Ip() ipAddress: string) {
+  async register(request: Request, @Ip() ipAddress: string) {
     if (!ipAddress) {
       throw new Error('IP address not found');
     }
