@@ -78,7 +78,7 @@ export class SagasService {
 
         console.log("Created game:", createdGame);
 
-        // @ts-expect-error TODO: revisar porque no me reconoce el tipo de retorno
+        // @ts-ignore
         return createdGame;
     }
     
