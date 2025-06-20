@@ -6,6 +6,7 @@ import { SagleGateway } from "./sagle.gateway";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import { Cache } from "cache-manager";
 import ProfileExecution from "src/decorators/ProfileExecution";
+import { UserDB } from "src/users/users.types";
 
 
 @Injectable()
@@ -166,12 +167,12 @@ export class SagleService {
     }
 
     @ProfileExecution
-    async voteGame(ipAddress: string, gameId: number) {
+    async voteGame(userId: string, gameId: number) {
         await this.cacheManager.del('currentSagle');
         return this.prisma.$transaction(async (tx) => {
             // Find user and game in the same transaction
             const [foundedUser, votedGame] = await Promise.all([
-                this.usersService.findUserByIpInTransaction(tx, ipAddress),
+                this.usersService.findUserByIdInTransaction(tx, userId),
                 tx.game.findUnique({ where: { id: gameId } })
             ]);
 
@@ -181,6 +182,7 @@ export class SagleService {
             // Update user and game in the same transaction
             const [updatedUser, updatedGame] = await Promise.all([
                 tx.user.update({
+                    // @ts-ignore
                     where: { id: foundedUser.id },
                     data: { hasVotedToday: true }
                 }),
@@ -208,9 +210,9 @@ export class SagleService {
     }
 
     @ProfileExecution
-    async attemptSaga(ipAddress: string, sagaId: number): Promise<{ haveFoundSagle: boolean }> {
+    async attemptSaga(userId: string, sagaId: number): Promise<{ haveFoundSagle: boolean }> {
         return this.prisma.$transaction(async (tx) => {
-            const foundedUser = await this.usersService.findUserByIpInTransaction(tx, ipAddress);
+            const foundedUser = await this.usersService.findUserByIdInTransaction(tx, userId);
             if (!foundedUser) {
                 throw new Error("User not found");
             }
@@ -222,6 +224,7 @@ export class SagleService {
             }
 
             await tx.user.update({
+                // @ts-ignore
                 where: { id: foundedUser.id },
                 data: {
                     idsAttemptedToday: {
@@ -235,6 +238,7 @@ export class SagleService {
             if (haveFoundSagle) {
                 await tx.user.update({
                     where: {
+                        // @ts-ignore
                         id: foundedUser.id
                     },
                     data: {
@@ -251,19 +255,16 @@ export class SagleService {
         })
     }
 
-    async getAttempts(ipAddress: string): Promise<number[]> {
-        const foundedUser = await this.usersService.findUserByIp(ipAddress);
-
-        if (!foundedUser) {
+    async getAttempts(user: UserDB): Promise<number[]> {
+        if (!user) {
             throw new Error("User not found");
         }
 
-        if (!foundedUser.idsAttemptedToday) {
+        if (!user.idsAttemptedToday) {
             return [];
         }
 
-        // Quiero que no se repitan los IDs
-        const uniqueIds = foundedUser.idsAttemptedToday.filter((value, index, self) =>
+        const uniqueIds = user.idsAttemptedToday.filter((value, index, self) =>
             self.indexOf(value) === index
         );
 

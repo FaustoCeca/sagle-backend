@@ -3,10 +3,14 @@ import { AppModule } from './app.module';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.enableCors();
+  app.enableCors({
+    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    credentials: true,
+  });
 
   function loadEnvFile() {
     const nodeEnv = process.env.NODE_ENV || 'development';
@@ -32,6 +36,8 @@ async function bootstrap() {
       dotenv.config();
     }
   }
+
+  app.use(cookieParser())
 
   loadEnvFile();
   await app.listen(process.env.PORT ?? 3000);

@@ -1,9 +1,13 @@
-import { Body, Controller, Get, Ip, Put } from "@nestjs/common";
+import { Body, Controller, Get, Ip, Put, Req } from "@nestjs/common";
 import { SagleService } from "./sagle.service";
+import { Request } from "express";
+import { UsersService } from "src/users/users.service";
 
 @Controller('sagle')
 export class SagleController {
-    constructor( private readonly sagleService: SagleService) {}
+    constructor( private readonly sagleService: SagleService,
+        private readonly userService: UsersService
+    ) {}
     
     @Put('choose-sagle')
     async chooseSagle() {
@@ -17,14 +21,31 @@ export class SagleController {
     }
 
     @Put('vote')
-    async voteGame(@Ip() IpAddress: string, @Body() body: { gameId: number }) {
-        const result = await this.sagleService.voteGame(IpAddress, body.gameId);
+    async voteGame(@Req() request: Request, @Body() body: { gameId: number }) {
+        const id = request.cookies['sagle_session'];
+        
+        const user = await this.userService.getUserById(id);
+
+        if (!user || !id ) {
+            return { message: 'No session found', success: false };
+        }
+
+        const result = await this.sagleService.voteGame(user.id, body.gameId);
         return { message: 'Vote registered successfully', success: true, user: result.user, saga: result.saga };
     }
 
     @Put('attempt')
-    async attemptSaga(@Ip() IpAddress: string, @Body() body: { sagaId: number }) {
-        const result = await this.sagleService.attemptSaga(IpAddress, body.sagaId);
+    async attemptSaga(@Req() request: Request, @Body() body: { sagaId: number }) {
+        const id = request.cookies['sagle_session'];
+
+        const user = await this.userService.getUserById(id);
+
+        if (!user || !id) {
+            return { message: 'No session found', success: false };
+        }
+
+
+        const result = await this.sagleService.attemptSaga(user.id, body.sagaId);
         return { 
             message: result.haveFoundSagle ? 'You found the Sagle!' : 'Attempt registered successfully',
             success: true,
@@ -33,8 +54,15 @@ export class SagleController {
     }
 
     @Get('attempts')
-    async getAttempts(@Ip() IpAddress: string) {
-        const attempts = await this.sagleService.getAttempts(IpAddress);
+    async getAttempts(@Req() request: Request) {
+        const id = request.cookies['sagle_session'];
+        const user = await this.userService.getUserById(id);
+        
+        if (!id || !user) {
+            return { message: 'No session found', success: false };
+        }
+
+        const attempts = await this.sagleService.getAttempts(user);
         return attempts;
     }
 }
