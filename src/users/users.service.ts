@@ -1,6 +1,4 @@
 import { Inject, Injectable } from '@nestjs/common';
-// import { User } from './schemas/user.schema';
-// import { Model } from 'mongoose';
 import { UserDto } from './dto/user.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UserDB } from './users.types';
@@ -11,36 +9,50 @@ import ProfileExecution from 'src/decorators/ProfileExecution';
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) { }
-  // constructor(@InjectModel(User.name) private userModel: Model<User>) {}
 
-  async createUser(userDto: UserDto): Promise<UserDB> {
-    console.log('Creating user with IP:', userDto.ipAddress);
-
-    const createdUser = await this.prisma.user.create({
-      data: {
-        ipAddress: userDto.ipAddress,
-        isAdmin: userDto.isAdmin || false,
+  async getUserById(userId: string): Promise<UserDB | null> {
+    if (!userId) {
+      console.error('User ID is required to get user by ID');
+      return null;
+    }
+    return this.prisma.user.findUnique({
+      where: {
+        id: userId
       }
-    });
-
-    return createdUser;
+    })
   }
 
   @ProfileExecution
-  async findUserByIp(ip: string): Promise<UserDB | null> {
-    const cacheKey = `user:${ip}`;
+  async createSession(userDto: UserDto): Promise<UserDB> {
+    if (userDto.userId) {
+      const existingUser = await this.findById(userDto.userId);
+
+      if (existingUser) {
+        return existingUser;
+      }
+    }
+
+    const newUser = await this.createUser();
+
+    return newUser;
+  }
+
+  @ProfileExecution
+  private async findById(userId: number): Promise<UserDB | null> {
+    const cacheKey = `user:${userId}`;
     const cachedUser = await this.cacheManager.get<UserDB>(cacheKey);
 
     if (cachedUser) {
-      console.log('Cache hit for user:', ip);
+      console.log('Cache hit for user ID:', userId);
       return cachedUser;
     }
 
     const user = await this.prisma.user.findUnique({
-      where: { ipAddress: ip }
-    })
+      // @ts-ignore
+      where: { id: userId }
+    });
 
     if (user) {
       await this.cacheManager.set(cacheKey, user, 60 * 20); // Cache for 20 minutes
@@ -49,17 +61,22 @@ export class UsersService {
     return user;
   }
 
-  async findUserByIpInTransaction(tx: any, ipAddress: string): Promise<UserDB | null> {
-    return tx.user.findUnique({
-      where: { ipAddress }
-    });
+  private createUser(): Promise<UserDB> {
+    return this.prisma.user.create({
+      data: {
+        hasParticipatedToday: false,
+        isAdmin: false,
+        hasVotedToday: false,
+        idsAttemptedToday: [],
+        lastParticipation: null,
+        streak: 0,
+      }
+    })
   }
 
-  // async updateUserParticipation(ip: string): Promise<User | null> {
-  //   return this.userModel.findOneAndUpdate(
-  //     { ip },
-  //     { lastParticipation: new Date() },
-  //     { new: true }
-  //   ).exec();
-  // }
+  async findUserByIdInTransaction(tx: any, id: string): Promise<UserDB | null> {
+    return tx.user.findUnique({
+      where: { id }
+    });
+  }
 }

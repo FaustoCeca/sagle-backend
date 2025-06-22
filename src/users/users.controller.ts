@@ -1,39 +1,44 @@
-import { Controller, Get, Post, Body, UseGuards, Req, Ip } from '@nestjs/common';
+import { Controller, Get, Post, Body, Req, Res } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UserDto } from './dto/user.dto';
-import { DailyLimitGuard } from '../common/guards/daily-limit.guard';
-import { IpGuard } from 'src/auth/ip.guard';
-import { Request } from 'express';
-import { adminsIps } from 'src/constants/adminsIps';
+import { Request, Response } from 'express';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) { }
+  @Post('session')
+  async createSession(@Res() response: Response, @Body() userDto: UserDto) {
+    const newUser = await this.usersService.createSession(userDto);
 
-  @Post('register')
-  async register(request: Request, @Ip() ipAddress: string) {
-    if (!ipAddress) {
-      throw new Error('IP address not found');
-    }
+    const twentyYearsInMilliseconds = 20 * 365 * 24 * 60 * 60 * 1000;
 
-    const existentUser = await this.usersService.findUserByIp(ipAddress);
+  response.cookie('sagle_session', newUser.id, {
+    httpOnly: true,
+    maxAge: twentyYearsInMilliseconds, // 20 años
+    sameSite: 'lax', // Ayuda con solicitudes cross-site
+    path: '/', // Asegura que la cookie esté disponible en toda la aplicación
+    secure: process.env.NODE_ENV === 'production', // true en producción, false en desarrollo
+  });
 
-    if (existentUser) {
-      return existentUser;
-    }
+    console.log('New session created for user:', newUser.id);
 
-    const createUserParams: UserDto = {
-      ipAddress,
-      isAdmin: adminsIps.includes(ipAddress),
-    }
-
-    return this.usersService.createUser(createUserParams);
+    return response.json(newUser);
   }
 
-  // @UseGuards(IpGuard, DailyLimitGuard)
-  // @Get('participate')
-  // async participate(@Req() request) {
-  //   const ip = request.ip;
-  //   return this.usersService.updateUserParticipation(ip);
-  // }
+  @Get('session')
+  async getCurrentSession(@Req() request: Request) {
+    const id = request.cookies['sagle_session'];
+
+    if (!id) {
+      return null; // or throw an error, depending on your design
+    }
+
+    const user = await this.usersService.getUserById(id);
+
+    if (!user) {
+      return null; // or throw an error, depending on your design
+    }
+
+    return user;
+  }
 }

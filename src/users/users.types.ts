@@ -1,6 +1,5 @@
 export interface UserDB {
-    id: number;
-    ipAddress: string;
+    id: string;
     lastParticipation?: Date | null;
     hasParticipatedToday?: boolean;
     hasVotedToday?: boolean;
