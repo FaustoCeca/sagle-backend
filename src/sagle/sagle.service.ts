@@ -203,7 +203,7 @@ export class SagleService {
         });
     }
 
-    private emitVoteUpdateAsync(gameId: number, userId: number, sagle: SagaDB) {
+    private emitVoteUpdateAsync(gameId: number, userId: string, sagle: SagaDB) {
         setImmediate(() => {
             this.sagleGateway.emiteVoteUpdate(gameId, userId, sagle);
         });

@@ -38,7 +38,7 @@ export class SagleGateway implements OnModuleInit {
     //     this.server.emit('attemptUpdate', { sagaId, userId });
     // }
 
-    emiteVoteUpdate(gameId: number, userId: number, sagle: SagaDB) {
+    emiteVoteUpdate(gameId: number, userId: string, sagle: SagaDB) {
         this.logger.log(`Emitting vote update for gameId: ${gameId}, userId: ${userId}, sagle: ${JSON.stringify(sagle)}`);
         this.server.emit('voteUpdate', sagle);
     }

@@ -12,8 +12,11 @@ export class UsersService {
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) { }
 
-  async getUserById(userId: number): Promise<UserDB | null> {
-    // @ts-ignore
+  async getUserById(userId: string): Promise<UserDB | null> {
+    if (!userId) {
+      console.error('User ID is required to get user by ID');
+      return null;
+    }
     return this.prisma.user.findUnique({
       where: {
         id: userId
@@ -47,6 +50,7 @@ export class UsersService {
     }
 
     const user = await this.prisma.user.findUnique({
+      // @ts-ignore
       where: { id: userId }
     });
 
@@ -54,12 +58,10 @@ export class UsersService {
       await this.cacheManager.set(cacheKey, user, 60 * 20); // Cache for 20 minutes
     }
 
-    // @ts-ignore
     return user;
   }
 
   private createUser(): Promise<UserDB> {
-    // @ts-ignore
     return this.prisma.user.create({
       data: {
         hasParticipatedToday: false,

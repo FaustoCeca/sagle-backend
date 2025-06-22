@@ -6,20 +6,23 @@ import { Request, Response } from 'express';
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) { }
-  // TODO: Validar en el frontend que cuando haya un token existente sagle_session, no llame al post sino al get
   @Post('session')
   async createSession(@Res() response: Response, @Body() userDto: UserDto) {
     const newUser = await this.usersService.createSession(userDto);
 
     const twentyYearsInMilliseconds = 20 * 365 * 24 * 60 * 60 * 1000;
 
-    response.cookie('sagle_session', newUser.id, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: twentyYearsInMilliseconds // 20 years
-    });
+  response.cookie('sagle_session', newUser.id, {
+    httpOnly: true,
+    maxAge: twentyYearsInMilliseconds, // 20 años
+    sameSite: 'lax', // Ayuda con solicitudes cross-site
+    path: '/', // Asegura que la cookie esté disponible en toda la aplicación
+    secure: process.env.NODE_ENV === 'production', // true en producción, false en desarrollo
+  });
 
-    return newUser;
+    console.log('New session created for user:', newUser.id);
+
+    return response.json(newUser);
   }
 
   @Get('session')
@@ -30,7 +33,7 @@ export class UsersController {
       return null; // or throw an error, depending on your design
     }
 
-    const user = this.usersService.getUserById(id);
+    const user = await this.usersService.getUserById(id);
 
     if (!user) {
       return null; // or throw an error, depending on your design
