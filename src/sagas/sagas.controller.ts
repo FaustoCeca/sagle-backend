@@ -1,9 +1,9 @@
 import { Body, Controller, Get, Post, UploadedFile, UseInterceptors } from "@nestjs/common";
 import { ArtStylesDto, CategoryDto, GameDto, PerspectiveDto, SagaDto } from "./dto/saga.dto";
 import { SagasService } from "./sagas.service";
-import { FileInterceptor } from "@nestjs/platform-express";
 import { UploadService } from "src/uploads/uploads.service";
 import UseUploadFileInterceptor from "src/decorators/UseFileInterceptor";
+import { Express } from 'express';
 
 
 @Controller('sagas')
