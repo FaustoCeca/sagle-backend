@@ -66,6 +66,8 @@ jobs:
           username: root
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            source ~/.bashrc
+            source ~/.profile
             cd ${{ env.DEPLOY_PATH }}
             cp ${{ env.ENV_FILE }} .env
             npm ci --production
