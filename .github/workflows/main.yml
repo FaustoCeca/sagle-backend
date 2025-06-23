@@ -33,7 +33,7 @@ jobs:
         run: npm ci
 
       - name: Build project
-        run: npm run build
+        run: npx nest build
 
       - name: Generate Prisma Client
         run: npx prisma generate
