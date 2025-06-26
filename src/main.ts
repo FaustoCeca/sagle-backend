@@ -8,7 +8,7 @@ import * as cookieParser from 'cookie-parser';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.enableCors({
-    origin: true, // O la URL específica de tu frontend, como 'http://localhost:5173'
+    origin: process.env.CORS_ORIGIN || 'http://localhost:5173', // Cambia esto según tu configuración
     credentials: true, // CRÍTICO para que las cookies funcionen
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: 'Origin,X-Requested-With,Content-Type,Accept,Authorization',
@@ -30,9 +30,6 @@ async function bootstrap() {
 
     if (fs.existsSync(envPath)) {
       require('dotenv').config({ path: envPath });
-      console.log(`Loaded environment variables from ${envFile}`);
-      console.log(`Environment: ${nodeEnv}`);
-      console.log(`Db: ${process.env.DATABASE_URL}`);
       dotenv.config({ path: envPath });
     } else {
       console.warn(`Environment file ${envFile} not found. Using default environment variables.`);

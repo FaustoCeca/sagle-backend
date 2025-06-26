@@ -27,8 +27,6 @@ export class SagasController {
         }
         const sagaDto = JSON.parse(body.sagaData) as SagaDto;
 
-        console.log('Saga data received:', sagaDto);
-        console.log('File received:', file);
 
         const fileUrl = await this.uploadService.uploadFile(file, "saga");
 
@@ -36,8 +34,6 @@ export class SagasController {
             ...sagaDto,
             imageUrl: fileUrl,
         };
-
-        console.log('Saga with file:', sagaWithFile);
 
         return this.sagasService.createSaga(sagaWithFile);
     }
