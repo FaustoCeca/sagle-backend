@@ -1,6 +1,7 @@
 import { Controller, Post, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadService } from './uploads.service';
+import { Express } from 'express';
 
 
 @Controller('upload')
