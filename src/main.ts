@@ -5,41 +5,43 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as cookieParser from 'cookie-parser';
 
+function loadEnvFile() {
+  const nodeEnv = process.env.NODE_ENV || 'development';
+
+  let envFile = '.env';
+
+  if (nodeEnv === 'production') {
+    envFile = '.env.prod';
+  } else if (nodeEnv === 'staging') {
+    envFile = '.env.stgn';
+  }
+
+  const envPath = path.resolve(process.cwd(), envFile);
+
+  if (fs.existsSync(envPath)) {
+    require('dotenv').config({ path: envPath });
+    dotenv.config({ path: envPath });
+  } else {
+    console.warn(`Environment file ${envFile} not found. Using default environment variables.`);
+    dotenv.config();
+  }
+}
+
 async function bootstrap() {
+  loadEnvFile();
+
   const app = await NestFactory.create(AppModule);
+  const corsOrigins = process.env.CORS_ORIGIN || ['http://localhost:5173', 'https://staging.thesagle.com', 'https://www.thesagle.com'];
+
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173', // Cambia esto según tu configuración
+    origin: corsOrigins,
     credentials: true, // CRÍTICO para que las cookies funcionen
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: 'Origin,X-Requested-With,Content-Type,Accept,Authorization',
   });
 
-
-  function loadEnvFile() {
-    const nodeEnv = process.env.NODE_ENV || 'development';
-  
-    let envFile = '.env';
-
-    if (nodeEnv === 'production') {
-      envFile = '.env.prod';
-    } else if (nodeEnv === 'staging') {
-      envFile = '.env.stgn';
-    }
-
-    const envPath = path.resolve(process.cwd(), envFile);
-
-    if (fs.existsSync(envPath)) {
-      require('dotenv').config({ path: envPath });
-      dotenv.config({ path: envPath });
-    } else {
-      console.warn(`Environment file ${envFile} not found. Using default environment variables.`);
-      dotenv.config();
-    }
-  }
-
   app.use(cookieParser())
 
-  loadEnvFile();
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();
