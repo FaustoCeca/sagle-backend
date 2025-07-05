@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 @Injectable()
@@ -12,7 +12,7 @@ export class UploadService {
     this.bucket = process.env.BUCKET_NAME_DIGITAL_OCEAN || 'your-bucket-name';
     this.cdnEndpoint = process.env.BUCKET_CDN_URL_DIGITAL_OCEAN || 'https://your-bucket-name.nyc3.cdn.digitaloceanspaces.com';
     this.s3Client = new S3Client({
-      forcePathStyle: false, 
+      forcePathStyle: false,
       region: process.env.DO_SPACES_REGION || 'nyc3',
       // endpoint: process.env.BUCKET_URL_DIGITAL_OCEAN || 'https://nyc3.digitaloceanspaces.com',
       endpoint: 'https://nyc3.digitaloceanspaces.com',
@@ -25,7 +25,7 @@ export class UploadService {
 
   async uploadFile(file: Express.Multer.File, type: "saga" | "game"): Promise<string> {
     const fileName = `${type}/${Date.now()}-${file.originalname.replace(/\s+/g, '-')}`;
-    
+
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: fileName,
@@ -48,5 +48,44 @@ export class UploadService {
     });
 
     return getSignedUrl(this.s3Client, command, { expiresIn: 3600 });
+  }
+
+  async deleteFile(fileUrl: string): Promise<void> {
+    const fileKey = this.extractKeyFromUrl(fileUrl);
+
+    if (!fileKey) {
+      console.warn(`Could not extract key from URL: ${fileUrl}`);
+      return;
+    }
+
+    try {
+      const command = new DeleteObjectCommand({
+        Bucket: this.bucket,
+        Key: fileKey,
+      });
+
+      await this.s3Client.send(command);
+      console.log(`Successfully deleted file: ${fileKey}`);
+    } catch (error) {
+      console.error(`Error deleting file ${fileKey}:`, error);
+      throw error;
+    }
+  }
+
+  // Método auxiliar para extraer la clave del archivo de la URL completa
+  private extractKeyFromUrl(url: string): string | null {
+    try {
+      // La URL completa se verá algo como: 
+      // https://your-bucket-name.nyc3.cdn.digitaloceanspaces.com/saga/12345-image.jpg
+
+      // Eliminar el prefijo del CDN
+      const keyWithPrefix = url.replace(this.cdnEndpoint + '/', '');
+
+      // Devolver la clave (por ejemplo: "saga/12345-image.jpg")
+      return keyWithPrefix;
+    } catch (error) {
+      console.error('Error extracting key from URL:', error);
+      return null;
+    }
   }
 }

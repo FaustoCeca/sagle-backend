@@ -25,7 +25,7 @@ export interface GameDB {
     title: string;
     birthYear: number;
     imageUrl: string;
-    // sagaId?: number | null;
+    sagaId?: number | null;
     saga?: SagaDB | null;
     steamLink: string | null;
     votes: number;

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UploadedFile, UseInterceptors } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, Put, UploadedFile, UseInterceptors } from "@nestjs/common";
 import { ArtStylesDto, CategoryDto, GameDto, PerspectiveDto, SagaDto } from "./dto/saga.dto";
 import { SagasService } from "./sagas.service";
 import { FileInterceptor } from "@nestjs/platform-express";
@@ -42,6 +42,38 @@ export class SagasController {
         return this.sagasService.createSaga(sagaWithFile);
     }
 
+    @Put(':sagaId')
+    @UseUploadFileInterceptor('file')
+    async updateSaga(
+        // TODO
+        @Body() body: any,
+        @Param('sagaId') sagaId: string,
+        @UploadedFile() file?: Express.Multer.File,
+    ) {
+        const sagaDto = JSON.parse(body.sagaData) as SagaDto;
+
+        if (file) {
+            const fileUrl = await this.uploadService.uploadFile(file, "saga");
+
+            const sagaWithFile: SagaDto = {
+                ...sagaDto,
+                imageUrl: fileUrl,
+            };
+
+            return this.sagasService.updateSaga(Number(sagaId), sagaWithFile);
+        }
+
+        return this.sagasService.updateSaga(Number(sagaId), sagaDto);
+    }
+
+    @Delete(':sagaId')
+    async deleteSaga(
+        @Param('sagaId') sagaId: string
+    ) {
+        return this.sagasService.deleteSaga(Number(sagaId)
+        );
+    }
+
     @Post('game')
     @UseUploadFileInterceptor('file')
     async createGame(
@@ -66,12 +98,42 @@ export class SagasController {
             steamLink: gameDto.steamLink,
         };
 
-        
+
         const createdGame = await this.sagasService.createGame(gameWithFile);
 
         await this.sagasService.addGameToSaga(Number(gameWithFile.sagaId), Number(createdGame.id));
-        
+
         return createdGame;
+    }
+
+    @Put('games/:gameId')
+    @UseUploadFileInterceptor('file')
+    async updateGame(
+        @Body() body: any,
+        @Param('gameId') gameId: string,
+        @UploadedFile() file?: Express.Multer.File,
+    ) {
+        const gameDto = JSON.parse(body.gameData) as GameDto;
+
+        if (file) {
+            const fileUrl = await this.uploadService.uploadFile(file, "game");
+
+            const gameWithFile: GameDto = {
+                ...gameDto,
+                imageUrl: fileUrl,
+            };
+
+            return this.sagasService.updateGame(Number(gameId), gameWithFile);
+        }
+
+        return this.sagasService.updateGame(Number(gameId), gameDto);
+    }
+
+    @Delete('games/:gameId')
+    async deleteGame(
+        @Param('gameId') gameId: string
+    ) {
+        return this.sagasService.deleteGame(Number(gameId));
     }
 
     @Post('category')
@@ -86,6 +148,12 @@ export class SagasController {
         return this.sagasService.getCategories();
     }
 
+    @Delete('categories/:categoryId')
+    async deleteCategory(
+        @Param('categoryId') categoryId: string
+    ) {
+        return this.sagasService.deleteCategory(Number(categoryId));
+    }
 
     @Post('perspective')
     async createPerspective(
@@ -97,6 +165,13 @@ export class SagasController {
     @Get('perspectives')
     async getPerspectives() {
         return this.sagasService.getPerspectives();
+    }
+
+    @Delete('perspectives/:perspectiveId')
+    async deletePerspective(
+        @Param('perspectiveId') perspectiveId: string
+    ) {
+        return this.sagasService.deletePerspective(Number(perspectiveId));
     }
 
     @Post('artstyle')
@@ -111,4 +186,10 @@ export class SagasController {
         return this.sagasService.getArtStyles();
     }
 
+    @Delete('artstyles/:artStyleId')
+    async deleteArtStyle(
+        @Param('artStyleId') artStyleId: string
+    ) {
+        return this.sagasService.deleteArtStyle(Number(artStyleId));
+    }
 }
