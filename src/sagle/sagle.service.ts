@@ -3,8 +3,6 @@ import { PrismaService } from "src/prisma/prisma.service";
 import { SagaDB } from "src/sagas/sagas.types";
 import { UsersService } from "src/users/users.service";
 import { SagleGateway } from "./sagle.gateway";
-import { CACHE_MANAGER } from "@nestjs/cache-manager";
-import { Cache } from "cache-manager";
 import ProfileExecution from "src/decorators/ProfileExecution";
 import { UserDB } from "src/users/users.types";
 
@@ -15,7 +13,6 @@ export class SagleService {
         private readonly prisma: PrismaService,
         private readonly usersService: UsersService,
         private readonly sagleGateway: SagleGateway,
-        @Inject(CACHE_MANAGER) private cacheManager: Cache
     ) { }
 
     async resetUsersParticipation(): Promise<void> {
@@ -123,16 +120,6 @@ export class SagleService {
 
     @ProfileExecution
     async getCurrentSagle(): Promise<SagaDB | null> {
-        const cacheKey = 'currentSagle';
-        const cachedSagle = await this.cacheManager.get<SagaDB>(cacheKey);
-
-        console.log("Cache hit for currentSagle:", !!cachedSagle);
-
-        if (cachedSagle) {
-            console.log("Returning cached Sagle");
-            return cachedSagle;
-        }
-
         const sagle = await this.prisma.saga.findFirst({
             where: {
                 isTheSagle: true
@@ -144,10 +131,6 @@ export class SagleService {
                 games: true,
             }
         });
-
-        if (sagle) {
-            await this.cacheManager.set(cacheKey, sagle, 60 * 30); // Cache for 5 minutes
-        }
 
         return sagle;
     }
@@ -168,7 +151,6 @@ export class SagleService {
 
     @ProfileExecution
     async voteGame(userId: string, gameId: number) {
-        await this.cacheManager.del('currentSagle');
         return this.prisma.$transaction(async (tx) => {
             // Find user and game in the same transaction
             const [foundedUser, votedGame] = await Promise.all([
