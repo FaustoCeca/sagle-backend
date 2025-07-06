@@ -15,9 +15,9 @@ export class UsersController {
   response.cookie('sagle_session', newUser.id, {
     httpOnly: true,
     maxAge: twentyYearsInMilliseconds, // 20 años
-    sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'none', // Ayuda con solicitudes cross-site
+    sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'none',
     path: '/', // Asegura que la cookie esté disponible en toda la aplicación
-    secure: process.env.NODE_ENV === 'production', // true en producción, false en desarrollo
+    secure: process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging', // Solo true en producción o staging
   });
 
     console.log('New session created for user:', newUser.id);
