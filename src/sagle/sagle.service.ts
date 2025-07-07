@@ -87,8 +87,18 @@ export class SagleService {
                         lastTimeBeingSagle: {
                             lt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3) // 3 days ago
                         }
+                    },
+                ],
+            },
+            include: {
+                _count: {
+                    select: {
+                        games: true,
+                        artStyles: true,
+                        perspectives: true,
+                        categories: true,
                     }
-                ]
+                }
             }
         });
 
