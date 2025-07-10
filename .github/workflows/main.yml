@@ -41,6 +41,9 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
+      - name: Run Prisma Migrations
+        run: npx prisma migrate deploy
+
       - name: Setup SSH key
         uses: webfactory/ssh-agent@v0.7.0
         with:
