@@ -57,6 +57,7 @@ export class HintService {
 
             const hint = await this.prisma.hint.create({
                 data: {
+                    id: Math.floor(Math.random() * 1000000),
                     text: response.choices[0].message.content,
                     sagaId: sagle.id,
                 }
