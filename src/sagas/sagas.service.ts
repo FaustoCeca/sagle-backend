@@ -11,7 +11,6 @@ export class SagasService {
     ) { }
 
     async createSaga(saga: SagaDto): Promise<SagaDB> {
-        console.log("Received saga data:", saga);
         const createdSaga = await this.prisma.saga.create({
             data: {
                 id: Math.floor(Math.random() * 1000000), // Generar un ID aleatorio
@@ -37,8 +36,6 @@ export class SagasService {
                 games: true
             }
         })
-
-        console.log("Created saga:", createdSaga);
 
         return createdSaga;
     }
@@ -152,8 +149,6 @@ export class SagasService {
             }
         })
 
-        console.log("Created game:", createdGame);
-
         // @ts-ignore
         return createdGame;
     }
@@ -169,8 +164,6 @@ export class SagasService {
                 steamLink: game.steamLink,
             },
         })
-
-        console.log("Updated game:", updatedGame);
 
         return updatedGame;
     }
@@ -206,8 +199,6 @@ export class SagasService {
                 name: category.name
             }
         })
-
-        console.log("Created category:", createdCategory);
 
         return createdCategory;
     }
@@ -260,8 +251,6 @@ export class SagasService {
             }
         })
 
-        console.log("Created perspective:", createdPerspective);
-
         return createdPerspective;
     }
 
@@ -312,8 +301,6 @@ export class SagasService {
                 name: artStyle.name
             }
         })
-
-        console.log("Created art style:", createdArtStyle);
 
         return createdArtStyle;
     }

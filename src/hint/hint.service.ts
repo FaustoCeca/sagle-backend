@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import OpenAi from "openai";
 import { PrismaService } from "src/prisma/prisma.service";
 import { SagaDB } from "src/sagas/sagas.types";
+import { HintDB } from "./hint.types";
 
 @Injectable()
 export class HintService {
@@ -20,8 +21,6 @@ export class HintService {
             if (!hint || hint.text === null || hint.text.trim() === "") {
                 const generatedHint = await this.generateHint(sagle);
 
-                console.log("not existing hint, creating new one")
-
                 return generatedHint;
             }
 
@@ -32,7 +31,7 @@ export class HintService {
         }
     }
 
-    async generateHint(sagle: SagaDB): Promise<string> {
+    async generateHint(sagle: SagaDB): Promise<HintDB> {
         try {
             const openai = new OpenAi({
                 apiKey: process.env.OPENAI_API_KEY,
@@ -52,8 +51,6 @@ export class HintService {
                 ],
             });
 
-            console.log("response from OpenAI:", response.choices[0].message.content);
-
             if (!response.choices[0].message.content || response.choices.length === 0) {
                 throw new Error("No response from OpenAI");
             }
@@ -65,7 +62,7 @@ export class HintService {
                 }
             })
 
-            return hint.text;
+            return hint;
         } catch (error) {
             console.error("Error generating hint:", error);
             throw new Error("Failed to generate hint");

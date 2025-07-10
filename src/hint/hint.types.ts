@@ -4,6 +4,5 @@ export interface HintDB {
     id: number;
     text: string;
     sagaId: number;
-    saga: SagaDB;
     createdAt: Date;
 }

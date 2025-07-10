@@ -19,8 +19,6 @@ export class HintController {
 
             const hint = await this.hintService.getHint(currentSagle);
 
-            console.log('Hint retrieved:', hint);
-
             return hint;
         } catch (error) {
             console.error('Error in getHint:', error);
