@@ -46,7 +46,7 @@ export class HintService {
                     },
                     {
                         role: 'user',
-                        content: `A person is playing a game about guessing video game sagas, the saga they have to guess is ${sagle.title}, give me a good clue, videogame related, but not so obvious or evident that I can guess it.`
+                        content: `A person is playing a game about guessing video game sagas, the saga they have to guess is ${sagle.title}, give me a good clue, videogame related, but not so obvious or evident that I can guess it. Dont start the sentence with the word "Hint" or "Hint:`
                     }
                 ],
             });

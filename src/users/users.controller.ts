@@ -10,11 +10,11 @@ export class UsersController {
   async createSession(@Res() response: Response, @Body() userDto: UserDto) {
     const newUser = await this.usersService.createSession(userDto);
 
-    const twentyYearsInMilliseconds = 20 * 365 * 24 * 60 * 60 * 1000;
+    const twentyYearsInMilliseconds = 20 * 365 * 24 * 60 * 60 * 10000;
 
   response.cookie('sagle_session', newUser.id, {
     httpOnly: true,
-    maxAge: twentyYearsInMilliseconds, // 20 años
+    maxAge: twentyYearsInMilliseconds,
     sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'none',
     path: '/', // Asegura que la cookie esté disponible en toda la aplicación
     secure: true, 

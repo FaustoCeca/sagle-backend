@@ -35,6 +35,12 @@ jobs:
       - name: Install NestJS CLI globally
         run: npm install -g @nestjs/cli
 
+      - name: Remove console.log in production
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          npm install -g remove-console-logs
+          remove-console-logs ./src
+
       - name: Build project
         run: npm run build
 
