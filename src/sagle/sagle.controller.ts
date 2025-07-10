@@ -29,7 +29,6 @@ export class SagleController {
         if (!user || !id ) {
             return { message: 'No session found', success: false };
         }
-
         const result = await this.sagleService.voteGame(user.id, body.gameId);
         return { message: 'Vote registered successfully', success: true, user: result.user, saga: result.saga };
     }
