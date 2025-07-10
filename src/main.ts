@@ -33,15 +33,15 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   let corsOrigins;
   // TODO: fixed CORS origins in production
-  // if (process.env.CORS_ORIGIN) {
-  //   corsOrigins = process.env.CORS_ORIGIN.includes(',') 
-  //     ? process.env.CORS_ORIGIN.split(',') 
-  //     : process.env.CORS_ORIGIN;
-  // } else {
-  //   corsOrigins = ['http://localhost:5173', 'https://thesagle.com', 'https://www.thesagle.com', 'https://staging.thesagle.com'];
-  // }
+  if (process.env.CORS_ORIGIN) {
+    corsOrigins = process.env.CORS_ORIGIN.includes(',') 
+      ? process.env.CORS_ORIGIN.split(',') 
+      : process.env.CORS_ORIGIN;
+  } else {
+    corsOrigins = ['http://localhost:5173', 'https://thesagle.com', 'https://www.thesagle.com', 'https://staging.thesagle.com'];
+  }
 
-  corsOrigins = ['http://localhost:5173', 'https://thesagle.com', 'https://www.thesagle.com', 'https://staging.thesagle.com'];
+  // corsOrigins = ['http://localhost:5173', 'https://thesagle.com', 'https://www.thesagle.com', 'https://staging.thesagle.com'];
   
 
   app.enableCors({

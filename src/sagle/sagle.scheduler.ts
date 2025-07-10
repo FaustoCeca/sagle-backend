@@ -7,6 +7,17 @@ export class SagleScheduler {
     constructor(private readonly sagleService: SagleService) {}
 
     @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+    async handleDeleteYesterdaySagleHint() {
+        try {
+            console.log('Deleting old hints...');
+            await this.sagleService.deleteYesterdaySagleHint();
+            console.log('Old hints deleted successfully');
+        } catch (error) {
+            console.error('Error deleting old hints:', error);
+        }
+    }
+
+    @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
     async handleDailySagleSelection() {
         try {
             console.log('Starting daily Sagle selection...');

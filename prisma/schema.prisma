@@ -24,6 +24,7 @@ model Saga {
   games      Game[]
   perspectives Perspective[]
   artStyles  ArtStyles []
+  hint     Hint?
   // yes, no, some
   hasMultiplayer String
   link       String
@@ -90,4 +91,15 @@ model User {
   @@index([hasVotedToday], name: "idx_user_has_voted_today")
   @@index([streak], name: "idx_user_streak")
   @@index([idsAttemptedToday], name: "idx_user_ids_attempted_today")
+}
+
+model Hint {
+  id        Int      @id @default(autoincrement())
+  sagaId     Int   @unique
+  text       String
+  createdAt  DateTime @default(now())
+  
+  saga      Saga     @relation(fields: [sagaId], references: [id])
+  @@index([sagaId], name: "idx_hint_saga_id")
+  @@index([createdAt], name: "idx_hint_created_at")
 }

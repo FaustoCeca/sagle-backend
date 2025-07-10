@@ -5,6 +5,7 @@ import { UsersService } from "src/users/users.service";
 import { SagleGateway } from "./sagle.gateway";
 import ProfileExecution from "src/decorators/ProfileExecution";
 import { UserDB } from "src/users/users.types";
+import { HintService } from "src/hint/hint.service";
 
 
 @Injectable()
@@ -13,8 +14,8 @@ export class SagleService {
         private readonly prisma: PrismaService,
         private readonly usersService: UsersService,
         private readonly sagleGateway: SagleGateway,
+        private readonly hintService: HintService
     ) { }
-
     async resetUsersParticipation(): Promise<void> {
         await this.prisma.user.updateMany({
             where: {
@@ -125,6 +126,9 @@ export class SagleService {
             }
         });
 
+        // Generate the hint for the new Sagle
+        await this.hintService.generateHint(updatedSagle);
+
         return updatedSagle;
     }
 
@@ -149,7 +153,7 @@ export class SagleService {
         return tx.saga.findFirst({
             where: {
                 isTheSagle: true
-            }, 
+            },
             include: {
                 categories: true,
                 perspectives: true,
@@ -262,4 +266,19 @@ export class SagleService {
 
         return uniqueIds.map(id => Number(id));
     }
+
+    async deleteYesterdaySagleHint(): Promise<void> {
+        const yesterdaySagle = await this.prisma.saga.findFirst({
+            where: {
+                wasSagleYesterday: true
+            },
+        });
+
+        if (!yesterdaySagle) {
+            throw new Error("No yesterday Sagle found");
+        }
+
+        await this.hintService.deleteHint(yesterdaySagle.id);
+    }
+
 }
