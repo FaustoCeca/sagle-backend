@@ -31,7 +31,7 @@ async function bootstrap() {
   loadEnvFile();
 
   const app = await NestFactory.create(AppModule);
-  let corsOrigins;
+  let corsOrigins: string | string[];
   // TODO: fixed CORS origins in production
   if (process.env.CORS_ORIGIN) {
     corsOrigins = process.env.CORS_ORIGIN.includes(',') 

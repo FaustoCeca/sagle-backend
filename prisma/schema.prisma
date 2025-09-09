@@ -24,7 +24,7 @@ model Saga {
   games      Game[]
   perspectives Perspective[]
   artStyles  ArtStyles []
-  hint     Hint?
+  hint     Hint[]
   // yes, no, some
   hasMultiplayer String
   link       String
@@ -95,7 +95,8 @@ model User {
 
 model Hint {
   id        Int      @id @default(autoincrement())
-  sagaId     Int   @unique
+  sagaId     Int
+  language   String @default("en") //en es fr 
   text       String
   createdAt  DateTime @default(now())
   

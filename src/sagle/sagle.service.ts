@@ -267,18 +267,4 @@ export class SagleService {
         return uniqueIds.map(id => Number(id));
     }
 
-    async deleteYesterdaySagleHint(): Promise<void> {
-        const yesterdaySagle = await this.prisma.saga.findFirst({
-            where: {
-                wasSagleYesterday: true
-            },
-        });
-
-        if (!yesterdaySagle) {
-            throw new Error("No yesterday Sagle found");
-        }
-
-        await this.hintService.deleteHint(yesterdaySagle.id);
-    }
-
 }
