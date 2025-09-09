@@ -12,15 +12,13 @@ export class UsersController {
 
     const twentyYearsInMilliseconds = 20 * 365 * 24 * 60 * 60 * 10000;
 
-  response.cookie('sagle_session', newUser.id, {
-    httpOnly: true,
-    maxAge: twentyYearsInMilliseconds,
-    sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'none',
-    path: '/', // Asegura que la cookie esté disponible en toda la aplicación
-    secure: true, 
-  });
-
-    console.log('New session created for user:', newUser.id);
+    response.cookie('sagle_session', newUser.id, {
+      httpOnly: true,
+      maxAge: twentyYearsInMilliseconds,
+      sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'none',
+      path: '/', // Asegura que la cookie esté disponible en toda la aplicación
+      secure: true,
+    });
 
     return response.json(newUser);
   }
