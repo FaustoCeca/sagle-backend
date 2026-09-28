@@ -11,7 +11,10 @@ export class HintController {
     @Get()
     async getHint() {
         try {
-            const currentSagle = await this.sagleService.getCurrentSagle();
+            // The hint must be looked up/generated against the REAL Sagle, not
+            // the masked one returned to clients (BUG-03 made masking the
+            // default for getCurrentSagle).
+            const currentSagle = await this.sagleService.getUnmaskedSagle();
 
             if (!currentSagle) {
                 return { message: 'No current Sagle found', success: false };

@@ -1,7 +1,6 @@
 import { Logger, OnModuleInit } from "@nestjs/common";
 import { WebSocketGateway, WebSocketServer } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
-import { SagaDB } from "src/sagas/sagas.types";
 
 
 @WebSocketGateway({
@@ -38,9 +37,12 @@ export class SagleGateway implements OnModuleInit {
     //     this.server.emit('attemptUpdate', { sagaId, userId });
     // }
 
-    emiteVoteUpdate(gameId: number, userId: string, sagle: SagaDB) {
-        this.logger.log(`Emitting vote update for gameId: ${gameId}, userId: ${userId}, sagle: ${JSON.stringify(sagle)}`);
-        this.server.emit('voteUpdate', sagle);
+    // BUG-03: never broadcast the Sagle over the socket — it would leak the
+    // answer to every connected client. We only signal that votes changed;
+    // clients that are allowed to see the answer refetch it over HTTP.
+    emiteVoteUpdate(gameId: number, userId: string) {
+        this.logger.log(`Emitting vote update for gameId: ${gameId}, userId: ${userId}`);
+        this.server.emit('voteUpdate', { gameId });
     }
     
     // Example method to emit an event when a user votes

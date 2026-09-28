@@ -41,6 +41,9 @@ lerna-debug.log*
 .env.test.local
 .env.production.local
 .env.local
+# Secretos de despliegue: NO deben estar en el repo (rotar las claves ya filtradas).
+.env.prod
+.env.stgn
 
 # temp directory
 .temp

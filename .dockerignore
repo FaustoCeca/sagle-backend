@@ -1,0 +1,29 @@
+# Nunca meter dependencias ni builds locales en la imagen (se generan adentro).
+node_modules
+dist
+dist-seed
+build
+coverage
+
+# Git y CI
+.git
+.gitignore
+.github
+
+# Secretos / entornos: jamás dentro de la imagen. Se inyectan en runtime.
+.env
+.env.*
+*.env
+
+# Tests y docs
+test
+**/*.spec.ts
+*.md
+
+# Editores / OS
+.vscode
+.idea
+.DS_Store
+
+# Artefactos del pipeline de imágenes (no se necesitan en la imagen)
+.playwright-mcp

@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
@@ -51,6 +52,15 @@ async function bootstrap() {
     allowedHeaders: 'Origin,X-Requested-With,Content-Type,Accept,Authorization',
   });
   app.use(cookieParser())
+
+  // BUG-05: validate & transform incoming bodies so bad input returns 400
+  // instead of crashing the service with a 500. `transform` enables the
+  // typed DTOs (AttemptDto/VoteDto) to be coerced and validated. We avoid
+  // `whitelist` globally because several admin DTOs have no validation
+  // decorators and would otherwise be stripped to empty objects.
+  app.useGlobalPipes(new ValidationPipe({
+    transform: true,
+  }));
 
   await app.listen(process.env.PORT ?? 3000);
 }

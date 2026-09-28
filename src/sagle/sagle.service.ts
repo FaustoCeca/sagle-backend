@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { SagaDB } from "src/sagas/sagas.types";
 import { UsersService } from "src/users/users.service";
@@ -6,7 +6,16 @@ import { SagleGateway } from "./sagle.gateway";
 import ProfileExecution from "src/decorators/ProfileExecution";
 import { UserDB } from "src/users/users.types";
 import { HintService } from "src/hint/hint.service";
+import { compareSagaWithSagle } from "./sagle.comparison";
+import { AttemptResult } from "./sagle.types";
 
+
+const SAGA_INCLUDE = {
+    categories: true,
+    perspectives: true,
+    artStyles: true,
+    games: true,
+} as const;
 
 @Injectable()
 export class SagleService {
@@ -118,12 +127,7 @@ export class SagleService {
                 isTheSagle: true,
                 lastTimeBeingSagle: new Date(),
             },
-            include: {
-                categories: true,
-                perspectives: true,
-                artStyles: true,
-                games: true,
-            }
+            include: SAGA_INCLUDE
         });
 
         // Generate the hint for the new Sagle
@@ -132,21 +136,49 @@ export class SagleService {
         return updatedSagle;
     }
 
-    @ProfileExecution
-    async getCurrentSagle(): Promise<SagaDB | null> {
-        const sagle = await this.prisma.saga.findFirst({
+    /**
+     * Returns the real (unmasked) Sagle for BACKEND-internal use only
+     * (e.g. hint generation). Never return this straight to a client — use
+     * `getCurrentSagle(hasWon)` for that so the answer stays hidden (BUG-03).
+     */
+    async getUnmaskedSagle(): Promise<SagaDB | null> {
+        return this.prisma.saga.findFirst({
             where: {
                 isTheSagle: true
             },
-            include: {
-                categories: true,
-                perspectives: true,
-                artStyles: true,
-                games: true,
-            }
+            include: SAGA_INCLUDE
         });
+    }
 
-        return sagle;
+    /**
+     * BUG-03: the answer must never reach a client that hasn't solved it yet.
+     * Strip every identifying field so the response carries no information
+     * about which saga is today's Sagle.
+     */
+    private maskSagle(sagle: SagaDB): SagaDB {
+        return {
+            ...sagle,
+            id: -1,
+            title: "",
+            imageUrl: "",
+            link: "",
+            hasMultiplayer: "",
+            lastTimeBeingSagle: null,
+            createdAt: new Date(0),
+            games: [],
+            categories: [],
+            perspectives: [],
+            artStyles: [],
+        };
+    }
+
+    @ProfileExecution
+    async getCurrentSagle(hasWon: boolean = false): Promise<SagaDB | null> {
+        const sagle = await this.getUnmaskedSagle();
+        if (!sagle) {
+            return null;
+        }
+        return hasWon ? sagle : this.maskSagle(sagle);
     }
 
     private async getCurrentSagleInTransaction(tx: any): Promise<SagaDB | null> {
@@ -154,12 +186,7 @@ export class SagleService {
             where: {
                 isTheSagle: true
             },
-            include: {
-                categories: true,
-                perspectives: true,
-                artStyles: true,
-                games: true,
-            }
+            include: SAGA_INCLUDE
         })
     }
 
@@ -172,13 +199,25 @@ export class SagleService {
                 tx.game.findUnique({ where: { id: gameId } })
             ]);
 
-            if (!foundedUser) throw new Error("User not found");
-            if (!votedGame) throw new Error("Game not found");
+            if (!foundedUser) throw new NotFoundException("User not found");
+            if (!votedGame) throw new NotFoundException("Game not found");
+
+            // BUG-03: voting happens only after solving the Sagle, and the vote
+            // response carries the (now revealed) answer. Block it otherwise so
+            // it can't be used to leak today's Sagle.
+            if (!foundedUser.hasParticipatedToday) {
+                throw new ForbiddenException("Solve today's Sagle before voting");
+            }
+
+            // BUG-01: a user can only vote once per day. Reject duplicate votes
+            // instead of incrementing again.
+            if (foundedUser.hasVotedToday) {
+                throw new ConflictException("You have already voted today");
+            }
 
             // Update user and game in the same transaction
             const [updatedUser, updatedGame] = await Promise.all([
                 tx.user.update({
-                    // @ts-ignore
                     where: { id: foundedUser.id },
                     data: { hasVotedToday: true }
                 }),
@@ -190,53 +229,70 @@ export class SagleService {
 
             // Get the updated Sagle with fresh game data
             const currentSagle = await this.getCurrentSagleInTransaction(tx);
-            if (!currentSagle) throw new Error("No current Sagle found");
+            if (!currentSagle) throw new NotFoundException("No current Sagle found");
 
             // Emit socket update asynchronously (don't await)
-            this.emitVoteUpdateAsync(gameId, updatedUser.id, currentSagle);
+            this.emitVoteUpdateAsync(gameId, updatedUser.id);
 
             return { user: updatedUser, saga: currentSagle };
         });
     }
 
-    private emitVoteUpdateAsync(gameId: number, userId: string, sagle: SagaDB) {
+    private emitVoteUpdateAsync(gameId: number, userId: string) {
         setImmediate(() => {
-            this.sagleGateway.emiteVoteUpdate(gameId, userId, sagle);
+            this.sagleGateway.emiteVoteUpdate(gameId, userId);
         });
     }
 
     @ProfileExecution
-    async attemptSaga(userId: string, sagaId: number): Promise<{ haveFoundSagle: boolean }> {
+    async attemptSaga(userId: string, sagaId: number): Promise<{ haveFoundSagle: boolean; result: AttemptResult }> {
         return this.prisma.$transaction(async (tx) => {
             const foundedUser = await this.usersService.findUserByIdInTransaction(tx, userId);
             if (!foundedUser) {
-                throw new Error("User not found");
+                throw new NotFoundException("User not found");
             }
 
             const currentSagle = await this.getCurrentSagleInTransaction(tx);
-
             if (!currentSagle) {
-                throw new Error("No current Sagle found");
+                throw new NotFoundException("No current Sagle found");
             }
 
-            await tx.user.update({
-                // @ts-ignore
-                where: { id: foundedUser.id },
-                data: {
-                    idsAttemptedToday: {
-                        push: sagaId
-                    },
-                }
-            })
+            // BUG-05: reject guesses for sagas that don't exist (was silently
+            // accepted and stored as a 200 "success").
+            const guessedSaga: SagaDB | null = await tx.saga.findUnique({
+                where: { id: sagaId },
+                include: SAGA_INCLUDE,
+            });
+            if (!guessedSaga) {
+                throw new NotFoundException(`Saga with id ${sagaId} not found`);
+            }
 
             const haveFoundSagle = currentSagle.id === sagaId;
+            // BUG-03: the comparison runs here, on the server. The client only
+            // receives the per-field result, never the Sagle itself.
+            const result = compareSagaWithSagle(currentSagle, guessedSaga);
+
+            // BUG-02: once the user has solved today's Sagle, further attempts
+            // are no-ops — no streak farming, no duplicate ids, no re-marking.
+            if (foundedUser.hasParticipatedToday) {
+                return { haveFoundSagle, result };
+            }
+
+            const alreadyAttempted = (foundedUser.idsAttemptedToday ?? []).includes(sagaId);
+            if (!alreadyAttempted) {
+                await tx.user.update({
+                    where: { id: foundedUser.id },
+                    data: {
+                        idsAttemptedToday: {
+                            push: sagaId
+                        },
+                    }
+                });
+            }
 
             if (haveFoundSagle) {
                 await tx.user.update({
-                    where: {
-                        // @ts-ignore
-                        id: foundedUser.id
-                    },
+                    where: { id: foundedUser.id },
                     data: {
                         hasParticipatedToday: true,
                         lastParticipation: new Date(),
@@ -247,24 +303,40 @@ export class SagleService {
                 });
             }
 
-            return { haveFoundSagle };
+            return { haveFoundSagle, result };
         })
     }
 
-    async getAttempts(user: UserDB): Promise<number[]> {
+    async getAttempts(user: UserDB): Promise<AttemptResult[]> {
         if (!user) {
-            throw new Error("User not found");
+            throw new NotFoundException("User not found");
         }
 
-        if (!user.idsAttemptedToday) {
+        const ids = (user.idsAttemptedToday ?? []).map((id) => Number(id));
+        // De-duplicate, keeping first-seen (oldest) order.
+        const uniqueIds = [...new Set(ids)];
+        if (uniqueIds.length === 0) {
             return [];
         }
 
-        const uniqueIds = user.idsAttemptedToday.filter((value, index, self) =>
-            self.indexOf(value) === index
-        );
+        const sagle = await this.getUnmaskedSagle();
+        if (!sagle) {
+            return [];
+        }
 
-        return uniqueIds.map(id => Number(id));
+        const sagas: SagaDB[] = await this.prisma.saga.findMany({
+            where: { id: { in: uniqueIds } },
+            include: SAGA_INCLUDE,
+        });
+        const byId = new Map(sagas.map((s) => [s.id, s]));
+
+        // Newest attempt first, matching the previous frontend ordering.
+        return uniqueIds
+            .slice()
+            .reverse()
+            .map((id) => byId.get(id))
+            .filter((saga): saga is SagaDB => Boolean(saga))
+            .map((saga) => compareSagaWithSagle(sagle, saga));
     }
 
 }
